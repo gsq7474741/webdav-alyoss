@@ -1,0 +1,33 @@
+services:
+  webdav:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: webdav-oss
+    restart: always
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse
+    security_opt:
+      - apparmor=unconfined
+    environment:
+      # 阿里云OSS配置
+      - OSS_BUCKET_NAME=${OSS_BUCKET_NAME}                 # OSS桶名
+      - OSS_ACCESS_KEY_ID=${OSS_ACCESS_KEY_ID}             # 阿里云访问密钥ID
+      - OSS_ACCESS_KEY_SECRET=${OSS_ACCESS_KEY_SECRET}     # 阿里云访问密钥Secret
+      - OSS_ENDPOINT=${OSS_ENDPOINT}                       # OSS端点地址
+      
+      # WebDAV相关环境变量
+      - WEBDAV_SERVER_NAME=${WEBDAV_SERVER_NAME}           # WebDAV域名
+      - WEBDAV_USERNAME=${WEBDAV_USERNAME}                 # WebDAV用户名
+      - WEBDAV_PASSWORD=${WEBDAV_PASSWORD}                # WebDAV密码
+      - SSL_ENABLED=${SSL_ENABLED:-true}                   # 是否启用SSL
+      - TZ=${TZ}                                           # 时区设置
+    volumes:
+      - ./data:/var/www/webdav/data                        # 可选：本地数据目录（如果需要）
+      - ./ssl/cert.pem:/etc/ssl/certs/webdav-cert.pem      # SSL证书
+      - ./ssl/key.pem:/etc/ssl/private/webdav-key.pem      # SSL私钥
+    ports:
+      - "9090:80"                                          # HTTP端口映射
+      - "9043:443"                                         # HTTPS端口映射
