@@ -1,0 +1,20 @@
+#!/bin/bash
+set -eu
+printf '%s\n' "$@" > /tmp/mock-ossfs-arguments
+if [[ "${MOCK_OSSFS_MODE:-ready}" == fail ]]; then
+    echo 'mock OSSFS mount failed' >&2
+    exit 7
+fi
+trap 'echo "mock OSSFS stopped"; exit 0' TERM INT
+if [[ "${MOCK_OSSFS_MODE:-ready}" != timeout ]]; then
+    # 模拟生产挂载参数 uid=33/gid=33，仅修改测试目录自身。
+    chown www-data:www-data "$2"
+    printf 'hidden file\n' > "$2/.hidden"
+    chmod 644 "$2/.hidden"
+    touch /tmp/fake-mounted
+fi
+while :; do
+    [[ ! -e /tmp/crash-ossfs ]] || exit 7
+    sleep 0.2 &
+    wait $! || true
+done
