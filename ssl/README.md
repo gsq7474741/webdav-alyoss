@@ -1,33 +1,26 @@
-# SSL 证书说明
+# TLS 证书说明
 
-此目录用于存放 WebDAV 服务器的 SSL 证书文件。
+启用 `SSL_ENABLED=true` 时，在本目录准备：
 
-## 文件要求
+- `cert.pem`：包含完整证书链的 PEM 文件。
+- `key.pem`：与证书匹配、无口令的 PEM 私钥。
 
-需要准备以下两个文件：
+证书必须包含客户端实际访问的域名。Compose 将整个目录以只读方式挂载到 `/etc/webdav/ssl`；启动脚本不会修改证书或私钥权限。请在主机上妥善设置私钥权限。这些文件已被 Git 和 Docker 构建上下文排除。
 
-1. `cert.pem` - SSL 证书文件
-2. `key.pem` - SSL 私钥文件
+## 本机测试证书
 
-## 生成自签名证书（仅用于测试）
-
-如果你只是在测试环境中使用，可以使用以下命令生成自签名证书：
+在本目录执行以下命令，生成仅用于 localhost 的一天期自签名证书：
 
 ```bash
-# 生成私钥和证书
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout key.pem -out cert.pem
-
-# 或者使用以下命令生成（指定主题信息）
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout key.pem -out cert.pem \
-  -subj "/C=CN/ST=YourState/L=YourCity/O=YourOrganization/OU=YourUnit/CN=localhost"
+openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+  -keyout key.pem -out cert.pem \
+  -subj "/CN=localhost" \
+  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+chmod 600 key.pem
 ```
 
-## 生产环境
+自签名证书需要客户端显式信任。远程部署请使用受信任 CA 签发且域名匹配的证书。
 
-在生产环境中，建议使用由受信任的证书颁发机构（CA）签发的证书，如 Let's Encrypt、DigiCert 等。
+## 更新证书
 
-## 注意事项
-
-- 确保证书和私钥文件的权限设置正确，私钥文件应该只有所有者可读
-- 证书应该包含你在 .env 文件中设置的 WEBDAV_SERVER_NAME 域名
-- 如果你使用的是自签名证书，客户端可能会显示安全警告
+替换主机上的两个文件后，执行 `docker compose restart webdav`，使 Apache 重新读取证书。先检查证书有效期、完整链以及私钥是否匹配。

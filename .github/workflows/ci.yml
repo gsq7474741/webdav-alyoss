@@ -1,0 +1,28 @@
+name: 容器与 WebDAV 回归测试
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: 检查启动脚本
+        run: |
+          bash -n start.sh healthcheck.sh tests/fixtures/ossfs
+          shellcheck start.sh healthcheck.sh tests/fixtures/ossfs tests/fixtures/mountpoint tests/fixtures/fusermount
+      - name: 检查 Compose 配置
+        run: docker compose --env-file .env.example config --quiet
+      - name: 构建镜像
+        run: docker build --pull -t webdav-alyoss:maintenance .
+      - name: 运行容器回归测试
+        run: python3 -m unittest discover -s tests -v

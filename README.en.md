@@ -1,157 +1,65 @@
-# WebDAV-Aliyun OSS Integration
+# WebDAV and Aliyun OSS
 
-[![中文](https://img.shields.io/badge/点我-中文README-red.svg)](README.md)
+[中文文档](README.md) · [MIT license](LICENSE)
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+Expose an Aliyun OSS bucket through Apache WebDAV and ossfs, with Basic authentication, optional HTTPS, and Docker Compose deployment.
 
-This project provides a simple yet powerful solution to integrate Aliyun Object Storage Service (OSS) with the WebDAV protocol, allowing you to access and manage files in Aliyun OSS through WebDAV clients.
+## Requirements and quick start
 
-## Features
-
-- 🔄 Mount Aliyun OSS bucket as a local filesystem
-- 🌐 Access OSS files via WebDAV protocol
-- 🔒 Basic authentication protection
-- 🔐 SSL encryption support for secure HTTPS access
-- 🐳 Fully containerized for quick deployment with Docker
-- 🔧 Simple configuration via environment variables
-
-## Quick Start
-
-### Prerequisites
-
-- [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/install/)
-- Aliyun OSS account and access credentials
-- (Optional) SSL certificate and private key files if you need SSL
-
-### Installation Steps
-
-1. Clone this repository:
+Use a Linux amd64 host with Docker Engine, Compose v2 or newer, and a working `/dev/fuse`. The container requires SYS_ADMIN and a FUSE-compatible AppArmor policy. The image uses Ubuntu 24.04 and ossfs 1.91.12; real FUSE mounts on ARM emulation or Docker Desktop require separate validation.
 
 ```bash
-git clone https://github.com/yourusername/webdav-alyoss.git
+git clone https://github.com/gsq7474741/webdav-alyoss.git
 cd webdav-alyoss
-```
-
-1. Copy the environment variables example file and modify it according to your configuration:
-
-```bash
 cp .env.example .env
-# Edit the .env file with your OSS and WebDAV configuration
+# Edit the bucket, OSS credentials, endpoint, and WebDAV password.
+docker compose config --quiet
+docker compose up -d --build
+docker compose logs --tail=100 webdav
 ```
 
-1. (Optional) If you need SSL, place your SSL certificate and private key files in the `ssl` directory:
-
-```bash
-# Create ssl directory if it doesn't exist
-mkdir -p ssl
-
-# Copy your certificate and key files to the ssl directory
-# and rename them to cert.pem and key.pem
-cp /path/to/your/certificate.crt ssl/cert.pem
-cp /path/to/your/private.key ssl/key.pem
-```
-
-1. Start the service:
-
-```bash
-docker-compose up -d
-```
-
-> ⚠️ **Note:** If you change any configuration files (such as .env, webdav.conf, docker-compose.yml, etc.), always run:
->
-> ```bash
-> docker-compose down
-> docker-compose up -d --build
-> ```
->
-> This ensures your configuration changes take effect.
-
-1. Access the WebDAV service:
-
-- HTTP mode: `http://localhost:9090` (will automatically redirect to HTTPS if SSL is enabled)
-- HTTPS mode: `https://localhost:9043` (if SSL is enabled)
-
-Connect using any WebDAV client with the username and password configured in the `.env` file.
+The example disables TLS and binds only to 127.0.0.1 for initial local testing. Connect to `http://localhost:9090/` using your configured WebDAV credentials.
 
 ## Configuration
 
-Configure the following environment variables in the `.env` file:
+- `OSS_BUCKET_NAME`: an existing OSS bucket.
+- `OSS_ACCESS_KEY_ID` and `OSS_ACCESS_KEY_SECRET`: credentials for a least-privilege RAM user.
+- `OSS_ENDPOINT`: the bucket's regional endpoint. HTTPS is added if no scheme is given. Use an internal endpoint only where private network access is available.
+- `WEBDAV_SERVER_NAME`: the hostname or IPv4 address clients use, without scheme, port, or path; defaults to localhost.
+- `WEBDAV_USERNAME` and `WEBDAV_PASSWORD`: a separate login you choose for WebDAV, unrelated to OSS credentials. Usernames start with a letter or digit and may contain letters, digits, dots, underscores, @, and hyphens. Passwords use bcrypt and are limited to 72 bytes; single-quote values in .env to preserve dollar signs and spaces.
+- `SSL_ENABLED`: true or false; defaults to true unless explicitly set.
+- `BIND_ADDRESS`: defaults to 127.0.0.1. Set to 0.0.0.0 for remote access and configure TLS and firewall rules.
+- `HTTP_PORT` / `HTTPS_PORT`: host ports, defaulting to 9090 / 9043. HTTPS_PORT is also used for redirects.
+- `OSS_MOUNT_TIMEOUT`: mount readiness timeout in seconds, 1–3600, default 30.
+- `TZ`: defaults to Asia/Shanghai.
 
-| Variable Name | Description | Example |
-|---------------|-------------|---------|
-| OSS_BUCKET_NAME | Aliyun OSS bucket name | my-bucket |
-| OSS_ACCESS_KEY_ID | Aliyun access key ID | LTAI5tXXXXXXXXXXXXXX |
-| OSS_ACCESS_KEY_SECRET | Aliyun access key secret | XXXXXXXXXXXXXXXXXXXXXXXX |
-| OSS_ENDPOINT | OSS endpoint address | oss-cn-beijing-internal.aliyuncs.com |
-| WEBDAV_USERNAME | WebDAV username | admin |
-| WEBDAV_PASSWORD | WebDAV password | strong-password |
-| TZ | Timezone setting | Asia/Shanghai |
-
-## Client Connection
-
-You can connect to the service using the following WebDAV clients:
-
-- **Windows**: Windows Explorer (Network Drive)
-- **macOS**: Finder (Connect to Server)
-- **Linux**: davfs2
-- **Mobile Devices**: Various WebDAV client apps
-
-Connection URLs:
-- HTTP: `http://your-server-ip:9090`
-- HTTPS: `https://your-server-ip:9043` (if SSL is enabled)
-
-## Project Structure
-
-```plaintext
-webdav-alyoss/
-├── Dockerfile          # Docker image build file
-├── docker-compose.yml  # Docker Compose configuration
-├── start.sh            # Container startup script
-├── supervisord.conf    # Supervisor configuration
-├── webdav.conf         # Apache WebDAV configuration
-├── .env                # Environment variables configuration
-├── .env.example        # Environment variables example file
-├── ssl/                # SSL certificates directory
-│   ├── cert.pem        # SSL certificate file
-│   ├── key.pem         # SSL private key file
-│   └── README.md       # SSL certificates guide
-├── README.md           # Chinese documentation
-└── README.en.md        # English documentation
-```
-
-## Security Considerations
-
-- Do not use default passwords in production environments
-- Strongly recommended to enable SSL and use HTTPS for secure WebDAV connections
-- Use trusted SSL certificates from a Certificate Authority in production, not self-signed certificates
-- Regularly update your Aliyun access keys
-- Limit OSS access permissions to the minimum necessary scope
-
-## Troubleshooting
-
-If you encounter issues, check the following logs:
+To enable TLS, place a matching full certificate chain and private key in `ssl/cert.pem` and `ssl/key.pem`, set SSL_ENABLED=true, and recreate the container:
 
 ```bash
-# View container logs
-docker-compose logs
-
-# View OSSFS logs
-docker exec webdav-oss cat /var/log/ossfs.log
-
-# View WebDAV logs
-docker exec webdav-oss cat /var/log/apache2/webdav-error.log
+docker compose up -d --build --force-recreate
 ```
 
-## Contributing
+Certificates are mounted read-only. HTTP redirects use status 307 and the configured HTTPS port. Configure clients to use HTTPS directly so they do not send Basic credentials over HTTP first. Never share .env, private keys, access keys, or unredacted configuration output.
 
-Issues and pull requests are welcome!
+## Upgrading
 
-## License
+Back up .env, certificates, and the old ./data directory before pulling updates. Existing environment variables and default ports are retained, but remote access now requires BIND_ADDRESS=0.0.0.0.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+The old local ./data mapping has been removed. Files written locally outside the old OSS symlinks are not migrated automatically; inspect and migrate them yourself. The host directory is not deleted.
 
-## Acknowledgements
+The WebDAV document root is now the OSS mount itself, so hidden files and files created after startup are accessible. Either Apache or ossfs exiting stops the container, allowing Docker to restart it. Inspect logs with `docker compose logs`.
 
-- [ossfs](https://github.com/aliyun/ossfs) - For mounting OSS as a filesystem
-- [Apache HTTP Server](https://httpd.apache.org/) - For providing WebDAV service
+OSS is not a fully POSIX local filesystem. Renames are not atomic, random writes may re-upload objects, and multiple writers are not coordinated. WebDAV locks are local to one container and are lost when that container is recreated.
+
+## Validation
+
+```bash
+docker build -t webdav-alyoss:maintenance .
+python -m unittest discover -s tests -v
+```
+
+Tests run real Apache containers and cover authentication, HTTP/TLS, WebDAV file operations and locking, configuration errors, mount failures, health checks, restart, and shutdown. Only the OSS mount process and mount checks are substituted. Actual OSS/FUSE connectivity, permissions, persistence, and desktop client compatibility require a test bucket.
+
+GitHub Actions runs lint, builds, and regression tests for pushes and pull requests. Dependabot checks Docker and Actions versions monthly. OSSFS packages are pinned and verified with SHA-256.
+
+See the [Chinese guide](README.md) for troubleshooting and migration details.

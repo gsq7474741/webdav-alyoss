@@ -1,0 +1,8 @@
+# 只把构建需要的公开文件送入构建上下文，排除凭证和证书。
+*
+!Dockerfile
+!.dockerignore
+!start.sh
+!healthcheck.sh
+!webdav.conf
+!webdav-ports.conf
